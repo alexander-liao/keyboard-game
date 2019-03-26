@@ -18,6 +18,8 @@ public class KeyboardListener implements MouseListener, MouseMotionListener, Key
 	
 	private final Set<Integer> keys;
 	
+	private boolean shift = false, ctrl = false;
+	
 	private final Map<Integer, Integer> mem;
 
 	public KeyboardListener(VirtualKeyboard keyboard) {
@@ -34,9 +36,9 @@ public class KeyboardListener implements MouseListener, MouseMotionListener, Key
 		} else if (e.getKeyCode() == KeyEvent.VK_B) {
 			this.keyboard.octaveUp();
 		} else if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
-			this.keyboard.octaveUp();
+			this.shift = this.keyboard.octaveUp();
 		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL) {
-			this.keyboard.octaveDown();
+			this.ctrl = this.keyboard.octaveDown();
 		} else {
 			int key = Utils.KEY_MAP.getOrDefault(e.getKeyCode(), -1);
 			if (key != -1) {
@@ -51,9 +53,15 @@ public class KeyboardListener implements MouseListener, MouseMotionListener, Key
 	public void keyReleased(KeyEvent e) {
 		this.keys.remove(e.getKeyCode());
 		if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
-			this.keyboard.octaveDown();
+			if (this.shift) {
+				this.keyboard.octaveDown();
+				this.shift = false;
+			}
 		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL) {
-			this.keyboard.octaveUp();
+			if (this.ctrl) {
+				this.keyboard.octaveUp();
+				this.ctrl = false;
+			}
 		} else {
 			int key = Utils.KEY_MAP.getOrDefault(e.getKeyCode(), -1);
 			if (key != -1 && this.mem.containsKey(key)) {

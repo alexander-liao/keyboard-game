@@ -5,8 +5,11 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.sound.midi.Receiver;
+import javax.sound.midi.Synthesizer;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 
@@ -23,16 +26,42 @@ public class VirtualKeyboard extends JComponent {
 	
 	public final JFrame window;
 	private final Receiver recv;
+	private final Synthesizer synth;
 	
 	private final List<Game> listeners;
 	
-	public VirtualKeyboard(JFrame window, Receiver recv) {
+	private long vibrato_start = -1;
+	private double vibrato_rate = 0.1;
+	private int bend = 8192;
+	
+	public VirtualKeyboard(JFrame window, Receiver recv, Synthesizer synth) {
 		this.pressed = new boolean[88];
 		this.screenIn = -1;
 		this.offset = 39;
 		this.listeners = new ArrayList<>();
 		this.window = window;
 		this.recv = recv;
+		this.synth = synth;
+		
+		new Timer().scheduleAtFixedRate(new TimerTask() {
+			@Override
+			public void run() {
+				if (VirtualKeyboard.this.vibrato_start == -1) {
+					if (VirtualKeyboard.this.bend != 16000) {
+						VirtualKeyboard.this.synth.getChannels()[0].setPitchBend(16000);
+						VirtualKeyboard.this.bend = 16000;
+					}
+				} else {
+					VirtualKeyboard.this.bend = 8192
+							+ (int) (8191 * Math.sin(
+									(double) (System.currentTimeMillis() - VirtualKeyboard.this.vibrato_start)
+									/ VirtualKeyboard.this.vibrato_rate));
+					System.out.println(VirtualKeyboard.this.bend);
+ 					VirtualKeyboard.this.synth.getChannels()[0].setPitchBend(VirtualKeyboard.this.bend);
+					VirtualKeyboard.this.bend = 8192;
+				}
+			}
+		}, 0, 10);
 	}
 	
 	public void paintComponent(Graphics g) {
@@ -43,7 +72,7 @@ public class VirtualKeyboard extends JComponent {
 		
 		insertWhite(g, 0, false, true, 0);
 		insertBlack(g, 0, 1);
-		insertWhite(g, w, true, false, 2);
+		insertWhite(g, w, true, false, 2);		
 		
 		int x = w;
 		int pos = 3;
@@ -151,7 +180,7 @@ public class VirtualKeyboard extends JComponent {
 	}
 	
 	public void press(int pos) {
-		if (pos == -1) return;
+		if (pos < 0) return;
 		pos += this.offset;
 		if (pos >= 0 && pos < 88) {
 			this.pressed[pos] = true;
@@ -161,7 +190,7 @@ public class VirtualKeyboard extends JComponent {
 	}
 	
 	public void release(int pos) {
-		if (pos == -1) return;
+		if (pos < 0) return;
 		this.pressed[pos] = false;
 		Utils.stopMIDI(recv, pos + 21);
 		this.repaint();
@@ -171,18 +200,22 @@ public class VirtualKeyboard extends JComponent {
 		return pos >= 0 && pos < 88 && this.pressed[pos];
 	}
 	
-	public void octaveUp() {
+	public boolean octaveUp() {
 		if (this.offset < 75) {
 			this.offset += 12;
 			this.repaint();
+			return true;
 		}
+		return false;
 	}
 	
-	public void octaveDown() {
+	public boolean octaveDown() {
 		if (this.offset > -8) {
 			this.offset -= 12;
 			this.repaint();
+			return true;
 		}
+		return false;
 	}
 	
 	public int getOffset() {
@@ -207,13 +240,13 @@ public class VirtualKeyboard extends JComponent {
 		}
 	}
 	
-	public static VirtualKeyboard createKeyboard(Receiver recv) {
+	public static VirtualKeyboard createKeyboard(Receiver recv, Synthesizer synth) {
 		JFrame window = new JFrame();
 //		window.setSize(52 * Constants.WHITE_KEY_WIDTH, Constants.WHITE_KEY_HEIGHT);
 		window.setResizable(false);
 		window.setLocation(Utils.SCREEN.width / 2 - (52 * Constants.WHITE_KEY_WIDTH) / 2, Utils.SCREEN.height - Constants.WHITE_KEY_HEIGHT - 75);
 		
-		VirtualKeyboard keyboard = new VirtualKeyboard(window, recv);
+		VirtualKeyboard keyboard = new VirtualKeyboard(window, recv, synth);
 		window.add(keyboard);
 		
 		int w = 52 * Constants.WHITE_KEY_WIDTH;

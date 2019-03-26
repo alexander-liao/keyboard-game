@@ -6,9 +6,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.sound.midi.Instrument;
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
+import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Synthesizer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -47,8 +49,12 @@ public class Main extends JComponent {
 			Instrument instrument = instruments.get(options.getSelectedItem());
 			synth.loadInstrument(instrument);
 			
+			ShortMessage sm = new ShortMessage();
+			sm.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument.getPatch().getProgram(), 0);
+			
 			recv = MidiSystem.getReceiver();
-		} catch (MidiUnavailableException e) {
+			recv.send(sm, -1);
+		} catch (MidiUnavailableException | InvalidMidiDataException e) {
 			System.err.println("Unfortunately, MIDI appears to not work on this device.");
 			return;
 		}
@@ -77,7 +83,7 @@ public class Main extends JComponent {
 		
 		if (DEBUG) {
 			window.setLocation(Utils.SCREEN.width / 2 - window.getWidth() / 2, 0);
-			VirtualKeyboard keyboard = VirtualKeyboard.createKeyboard(recv);
+			VirtualKeyboard keyboard = VirtualKeyboard.createKeyboard(recv, synth);
 			keyboard.bind(game);
 		}
 	}
