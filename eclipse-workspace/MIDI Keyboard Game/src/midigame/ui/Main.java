@@ -2,9 +2,18 @@ package midigame.ui;
 
 import java.awt.Font;
 import java.awt.Insets;
+import java.util.HashMap;
+import java.util.Map;
 
+import javax.sound.midi.Instrument;
+import javax.sound.midi.MidiSystem;
+import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Receiver;
+import javax.sound.midi.Synthesizer;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import javax.swing.WindowConstants;
 
@@ -20,6 +29,30 @@ public class Main extends JComponent {
 	}
 
 	public static void main(String[] args) {
+		Synthesizer synth;
+		Receiver recv;
+		try {
+			synth = MidiSystem.getSynthesizer();
+
+			JComboBox<String> options = new JComboBox<String>();
+			Map<String, Instrument> instruments = new HashMap<>();
+
+			for (Instrument inst : synth.getAvailableInstruments()) {
+				options.addItem(inst.getName());
+				instruments.put(inst.getName(), inst);
+			}
+			
+			JOptionPane.showConfirmDialog(null, options, "Select an instrument", JOptionPane.PLAIN_MESSAGE);
+
+			Instrument instrument = instruments.get(options.getSelectedItem());
+			synth.loadInstrument(instrument);
+			
+			recv = MidiSystem.getReceiver();
+		} catch (MidiUnavailableException e) {
+			System.err.println("Unfortunately, MIDI appears to not work on this device.");
+			return;
+		}
+		
 		JFrame window = new JFrame("MIDIGame");
 		window.setSize(800, 500);
 		window.setLocation(Utils.SCREEN.width / 2 - window.getWidth() / 2, Utils.SCREEN.height / 2 - window.getHeight() / 2);
@@ -32,7 +65,8 @@ public class Main extends JComponent {
 		JTextArea instructions = new JTextArea("The keyboard is as follows:\n"
 				+ " W E   T Y U\n"
 				+ "A S D F G H J K\n"
-				+ "Press V to move the selected region down and B to move it up.\n"
+				+ "Press V to move the selected region down an octave and B to move it up.\n"
+				+ "Shift and Control temporarily shift the region up/down respectively, reversing on release.\n"
 				+ "You can also click on the keys.\n"
 				+ "If the keyboard has weird grey area around it, restart the program.");
 		instructions.setEditable(false);
@@ -43,7 +77,7 @@ public class Main extends JComponent {
 		
 		if (DEBUG) {
 			window.setLocation(Utils.SCREEN.width / 2 - window.getWidth() / 2, 0);
-			VirtualKeyboard keyboard = VirtualKeyboard.createKeyboard();
+			VirtualKeyboard keyboard = VirtualKeyboard.createKeyboard(recv);
 			keyboard.bind(game);
 		}
 	}

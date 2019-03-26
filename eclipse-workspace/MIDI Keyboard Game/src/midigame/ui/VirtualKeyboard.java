@@ -6,6 +6,7 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.sound.midi.Receiver;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 
@@ -21,15 +22,17 @@ public class VirtualKeyboard extends JComponent {
 	private volatile int offset;
 	
 	public final JFrame window;
+	private final Receiver recv;
 	
 	private final List<Game> listeners;
 	
-	public VirtualKeyboard(JFrame window) {
+	public VirtualKeyboard(JFrame window, Receiver recv) {
 		this.pressed = new boolean[88];
 		this.screenIn = -1;
 		this.offset = 39;
 		this.listeners = new ArrayList<>();
 		this.window = window;
+		this.recv = recv;
 	}
 	
 	public void paintComponent(Graphics g) {
@@ -130,9 +133,16 @@ public class VirtualKeyboard extends JComponent {
 	}
 	
 	public void setScreenIn(int si) {
+		if (si == this.screenIn) return;
 		this.sendSignal(false, this.screenIn);
+		if (!this.getPressed(this.screenIn)) {
+			Utils.stopMIDI(recv, this.screenIn + 21);
+		}
 		this.screenIn = si;
 		this.sendSignal(true, this.screenIn);
+		if (!this.getPressed(this.screenIn) && this.screenIn != -1) {
+			Utils.playMIDI(recv, this.screenIn + 21, 90);
+		}
 		this.repaint();
 	}
 	
@@ -145,20 +155,20 @@ public class VirtualKeyboard extends JComponent {
 		pos += this.offset;
 		if (pos >= 0 && pos < 88) {
 			this.pressed[pos] = true;
+			this.repaint();
+			Utils.playMIDI(recv, pos + 21, 90);
 		}
-		this.repaint();
 	}
 	
 	public void release(int pos) {
 		if (pos == -1) return;
-		for (int i = (pos + 3) % 12; i < 88; i += 12) {
-			this.pressed[i] = false;
-		}
+		this.pressed[pos] = false;
+		Utils.stopMIDI(recv, pos + 21);
 		this.repaint();
 	}
 	
 	public boolean getPressed(int pos) {
-		return this.pressed[pos];
+		return pos >= 0 && pos < 88 && this.pressed[pos];
 	}
 	
 	public void octaveUp() {
@@ -197,13 +207,13 @@ public class VirtualKeyboard extends JComponent {
 		}
 	}
 	
-	public static VirtualKeyboard createKeyboard() {
+	public static VirtualKeyboard createKeyboard(Receiver recv) {
 		JFrame window = new JFrame();
 //		window.setSize(52 * Constants.WHITE_KEY_WIDTH, Constants.WHITE_KEY_HEIGHT);
 		window.setResizable(false);
 		window.setLocation(Utils.SCREEN.width / 2 - (52 * Constants.WHITE_KEY_WIDTH) / 2, Utils.SCREEN.height - Constants.WHITE_KEY_HEIGHT - 75);
 		
-		VirtualKeyboard keyboard = new VirtualKeyboard(window);
+		VirtualKeyboard keyboard = new VirtualKeyboard(window, recv);
 		window.add(keyboard);
 		
 		int w = 52 * Constants.WHITE_KEY_WIDTH;

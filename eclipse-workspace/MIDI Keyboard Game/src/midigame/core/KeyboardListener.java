@@ -5,33 +5,61 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-
-import javax.swing.JFrame;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import midigame.ui.VirtualKeyboard;
 import midigame.utils.Utils;
 
 public class KeyboardListener implements MouseListener, MouseMotionListener, KeyListener {
 	private final VirtualKeyboard keyboard;
+	
+	private final Set<Integer> keys;
+	
+	private final Map<Integer, Integer> mem;
 
 	public KeyboardListener(VirtualKeyboard keyboard) {
 		this.keyboard = keyboard;
+		this.keys = new HashSet<>();
+		this.mem = new HashMap<>();
 	}
 
 	@Override
 	public void keyPressed(KeyEvent e) {
+		if (this.keys.contains(e.getKeyCode())) return;
 		if (e.getKeyCode() == KeyEvent.VK_V) {
 			this.keyboard.octaveDown();
 		} else if (e.getKeyCode() == KeyEvent.VK_B) {
 			this.keyboard.octaveUp();
+		} else if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+			this.keyboard.octaveUp();
+		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL) {
+			this.keyboard.octaveDown();
 		} else {
-			this.keyboard.press(Utils.KEY_MAP.getOrDefault(e.getKeyCode(), -1));
+			int key = Utils.KEY_MAP.getOrDefault(e.getKeyCode(), -1);
+			if (key != -1) {
+				this.keyboard.press(key);
+				this.mem.put(key, this.keyboard.getOffset() + key);
+			}
 		}
+		this.keys.add(e.getKeyCode());
 	}
 
 	@Override
 	public void keyReleased(KeyEvent e) {
-		this.keyboard.release(Utils.KEY_MAP.getOrDefault(e.getKeyCode(), -1));
+		this.keys.remove(e.getKeyCode());
+		if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+			this.keyboard.octaveDown();
+		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL) {
+			this.keyboard.octaveUp();
+		} else {
+			int key = Utils.KEY_MAP.getOrDefault(e.getKeyCode(), -1);
+			if (key != -1 && this.mem.containsKey(key)) {
+				this.keyboard.release(this.mem.remove(key));
+			}
+		}
 	}
 
 	@Override

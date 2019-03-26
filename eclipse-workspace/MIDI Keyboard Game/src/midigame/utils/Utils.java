@@ -6,6 +6,10 @@ import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.Receiver;
+import javax.sound.midi.ShortMessage;
+
 public class Utils {
 	private Utils() { }
 	
@@ -38,5 +42,25 @@ public class Utils {
 			result[i] = array[i];
 		}
 		return result;
+	}
+	
+	public static final void playMIDI(Receiver recv, int note, int vol) {
+		ShortMessage sm = new ShortMessage();
+		try {
+			sm.setMessage(ShortMessage.NOTE_ON, 0, note, vol);
+		} catch (InvalidMidiDataException e) {
+			System.err.println("Alex you dumb");
+		}
+		recv.send(sm, -1);
+	}
+	
+	public static final void stopMIDI(Receiver recv, int note) {
+		ShortMessage sm = new ShortMessage();
+		try {
+			sm.setMessage(ShortMessage.NOTE_OFF, 0, note, 0);
+		} catch (InvalidMidiDataException e) {
+			System.err.println("Alex you dumb");
+		}
+		recv.send(sm, -1);
 	}
 }
